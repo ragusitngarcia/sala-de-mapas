@@ -42,7 +42,7 @@
         .form-input { width: 100%; padding: 8px; background: #000; color: #00ff00; font-family: 'VT323', monospace; font-size: 1.1em; border: 2px solid #555; box-sizing: border-box; }
         .panel { display: none; margin-top: 20px; border-top: 2px dashed #444; padding-top: 20px; }
 
-        /* --- NUEVO: ESTILOS DEL MENÚ POINT AND CLICK --- */
+        /* --- MENÚ POINT AND CLICK --- */
         #login-screen { position: relative; width: 100%; height: 100%; }
         
         .game-title { position: absolute; top: 5%; width: 100%; text-align: center; pointer-events: none; margin: 0; z-index: 10; }
@@ -50,20 +50,34 @@
         #action-text { position: absolute; bottom: 8%; width: 100%; text-align: center; color: #00ff00; font-size: 2.5em; text-shadow: 3px 3px 0px #000; pointer-events: none; min-height: 1.2em; z-index: 10; }
 
         .hotspot { position: absolute; cursor: pointer; z-index: 5; }
-        .hotspot:hover { background-color: rgba(255, 255, 255, 0.1); /* Brillo leve al pasar el mouse. Podés ponerlo en 0 para que sea 100% invisible */ }
+        .hotspot:hover { background-color: rgba(255, 255, 255, 0.1); }
 
-        /* CALIBRACIÓN DE ZONAS (Ajustá estos porcentajes si no coinciden exacto con tu imagen) */
-        #hotspot-mapa {
-            top: 25%; left: 8%; width: 25%; height: 45%; 
-        }
-        #hotspot-tabernero {
-            top: 40%; right: 10%; width: 35%; height: 45%;
-        }
-        /* ----------------------------------------------- */
-
+        #hotspot-mapa { top: 25%; left: 8%; width: 25%; height: 45%; }
+        #hotspot-tabernero { top: 40%; right: 10%; width: 35%; height: 45%; }
+        
+        /* --- INTERFAZ PRINCIPAL DEL MAPA --- */
         #main-ui-screen { position: relative; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); }
-        #return-btn { position: absolute; top: 15px; right: 20px; z-index: 100; font-size: 1.1em; padding: 6px 12px; background-color: #333; border-color: #777; border-bottom-color: #111; border-right-color: #111; }
-        #save-btn { position: absolute; top: 15px; right: 180px; z-index: 100; font-size: 1.1em; padding: 6px 12px; background-color: #005500; border-color: #00aa00; border-bottom-color: #002200; border-right-color: #002200;}
+        
+        /* Contenedor apilado para los botones de arriba a la derecha */
+        #top-right-controls {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* Separación vertical entre los botones */
+        }
+        
+        #top-right-controls .btn {
+            margin: 0; /* Anula el margen global de .btn */
+            font-size: 1.1em; 
+            padding: 6px 12px;
+            width: 100%; /* Obliga a que ambos botones tengan el mismo ancho */
+        }
+
+        #save-btn { background-color: #005500; border-color: #00aa00; border-bottom-color: #002200; border-right-color: #002200;}
+        #return-btn { background-color: #333; border-color: #777; border-bottom-color: #111; border-right-color: #111; }
 
         #main-container { display: flex; width: 100%; height: 100%; }
         
@@ -161,8 +175,10 @@
     </div>
 
     <div id="main-ui-screen" class="screen">
-        <button id="save-btn" class="btn" onclick="saveMapToServer()">Guardar Progreso</button>
-        <button id="return-btn" class="btn" onclick="returnToMenu()">Volver a la Taberna</button>
+        <div id="top-right-controls">
+            <button id="save-btn" class="btn" onclick="saveMapToServer()">Guardar Progreso</button>
+            <button id="return-btn" class="btn" onclick="returnToMenu()">Volver a la Taberna</button>
+        </div>
 
         <div id="main-container">
             <div id="dm-sidebar">
@@ -200,14 +216,8 @@
     </div>
 
     <script>
-        // --- NUEVAS FUNCIONES DE POINT & CLICK ---
-        function setActionText(text) {
-            document.getElementById('action-text').innerText = text;
-        }
-        function clearActionText() {
-            document.getElementById('action-text').innerText = '';
-        }
-        // -----------------------------------------
+        function setActionText(text) { document.getElementById('action-text').innerText = text; }
+        function clearActionText() { document.getElementById('action-text').innerText = ''; }
 
         const canvas = document.getElementById('fog-canvas');
         const ctx = canvas.getContext('2d');
@@ -223,6 +233,10 @@
         let currentRole = '';
         let mapData = { campaign: '', mapName: '', gridSize: 40, gridState: {}, pois: [], imagePath: '' };
         let availableMaps = {}; 
+
+        // --- CARGAR LOS AUDIOS ---
+        const sonidoDM = new Audio('/assets/audio_dm.mp3');
+        const sonidoJugador = new Audio('/assets/audio_jugador.mp3');
 
         function loadLocalData() {
             const saved = localStorage.getItem('salaDeMapasData');
@@ -294,6 +308,14 @@
 
         function selectRole(role) {
             currentRole = role;
+            
+            // --- REPRODUCIR AUDIO SEGÚN EL ROL ---
+            if (role === 'dm') {
+                sonidoDM.play().catch(e => console.log("Audio bloqueado:", e));
+            } else {
+                sonidoJugador.play().catch(e => console.log("Audio bloqueado:", e));
+            }
+
             loginScreen.classList.remove('active-screen');
             
             if (role === 'dm') {
@@ -410,11 +432,10 @@
             renderAll();
         }
 
-  function updateMapBackground() {
+        function updateMapBackground() {
             const bg = document.getElementById('map-background');
             if (mapData.imagePath) { 
                 let path = mapData.imagePath;
-                // Si la ruta no empieza con http (mapas viejos locales), le agregamos la barra
                 if (!path.startsWith('http')) path = '/' + path; 
                 bg.style.backgroundImage = `url('${path}')`; 
             } 
