@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala de Mapas - D&D</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            margin: 0; 
+            background-image: url('/assets/Sala de Mapas Fondo.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            image-rendering: pixelated; 
+            background-color: #000; 
+            color: #d3d3d3; 
+            font-family: 'VT323', monospace; 
+            font-size: 22px; 
+            height: 100vh; 
+            overflow: hidden; 
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+        }
+        
+        .screen { display: none; width: 100%; height: 100%; }
+        .active-screen { display: flex; }
+        
+        #dm-setup-screen, #player-setup-screen { justify-content: center; align-items: center; flex-direction: column; }
+        
+        h1 { color: #e6b800; font-size: 4em; margin-bottom: 40px; text-shadow: 4px 4px 0px #000; letter-spacing: 2px; }
+        h2 { color: #e6b800; text-shadow: 2px 2px 0px #000; font-size: 1.8em; margin-top: 0; }
+
+        .setup-box { background-color: rgba(20, 20, 20, 0.9); padding: 30px; text-align: center; width: 400px; border: 4px solid #8b0000; box-shadow: 8px 8px 0px rgba(0,0,0,0.8); }
+        
+        .btn { padding: 10px 20px; margin: 10px; font-size: 1.2em; font-family: 'VT323', monospace; text-transform: uppercase; background-color: #8b0000; color: white; border: 2px solid #ff6666; border-bottom: 4px solid #4a0000; border-right: 4px solid #4a0000; cursor: pointer; box-shadow: 4px 4px 0px #000; }
+        .btn:hover { background-color: #a00000; }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #000; border-bottom: 2px solid #4a0000; border-right: 2px solid #4a0000; }
+
+        .form-group { text-align: left; margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 1.1em; color: #e6b800; margin-bottom: 5px; text-shadow: 1px 1px 0px #000; }
+        .form-input { width: 100%; padding: 8px; background: #000; color: #00ff00; font-family: 'VT323', monospace; font-size: 1.1em; border: 2px solid #555; box-sizing: border-box; }
+        .panel { display: none; margin-top: 20px; border-top: 2px dashed #444; padding-top: 20px; }
+
+        /* --- NUEVO: ESTILOS DEL MENÚ POINT AND CLICK --- */
+        #login-screen { position: relative; width: 100%; height: 100%; }
+        
+        .game-title { position: absolute; top: 5%; width: 100%; text-align: center; pointer-events: none; margin: 0; z-index: 10; }
+        
+        #action-text { position: absolute; bottom: 8%; width: 100%; text-align: center; color: #00ff00; font-size: 2.5em; text-shadow: 3px 3px 0px #000; pointer-events: none; min-height: 1.2em; z-index: 10; }
+
+        .hotspot { position: absolute; cursor: pointer; z-index: 5; }
+        .hotspot:hover { background-color: rgba(255, 255, 255, 0.1); /* Brillo leve al pasar el mouse. Podés ponerlo en 0 para que sea 100% invisible */ }
+
+        /* CALIBRACIÓN DE ZONAS (Ajustá estos porcentajes si no coinciden exacto con tu imagen) */
+        #hotspot-mapa {
+            top: 25%; left: 8%; width: 25%; height: 45%; 
+        }
+        #hotspot-tabernero {
+            top: 40%; right: 10%; width: 35%; height: 45%;
+        }
+        /* ----------------------------------------------- */
+
+        #main-ui-screen { position: relative; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); }
+        #return-btn { position: absolute; top: 15px; right: 20px; z-index: 100; font-size: 1.1em; padding: 6px 12px; background-color: #333; border-color: #777; border-bottom-color: #111; border-right-color: #111; }
+        #save-btn { position: absolute; top: 15px; right: 180px; z-index: 100; font-size: 1.1em; padding: 6px 12px; background-color: #005500; border-color: #00aa00; border-bottom-color: #002200; border-right-color: #002200;}
+
+        #main-container { display: flex; width: 100%; height: 100%; }
+        
+        #dm-sidebar { width: 320px; background-color: rgba(20, 20, 20, 0.95); border-right: 4px solid #8b0000; display: none; flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto; z-index: 40; }
+        .dm-section { border-bottom: 2px dashed #444; padding-bottom: 15px; margin-bottom: 15px; }
+        .dm-section label { display: block; color: #e6b800; margin-bottom: 5px; text-transform: uppercase; }
+        .dm-section input[type="text"] { width: 100%; padding: 8px; background: #000; color: #00ff00; font-family: 'VT323', monospace; font-size: 1.1em; border: 2px solid #555; box-sizing: border-box; margin-bottom: 10px; }
+        
+        #poi-list { list-style: none; padding: 0; margin: 0; }
+        #poi-list li { background: #000; padding: 10px; border: 2px solid #333; margin-bottom: 8px; border-left: 4px solid #8b0000; }
+        .poi-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .poi-coord { color: #e6b800; }
+        .poi-controls { display: flex; align-items: center; gap: 8px; color: #aaa; }
+        
+        #map-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+        #map-layout { display: grid; grid-template-columns: 30px 800px; grid-template-rows: 30px 800px; background-color: #000; padding: 10px 10px 10px 0; border: 4px solid #444; box-shadow: 10px 10px 0px rgba(0,0,0,0.8); }
+        #corner-spacer { grid-column: 1; grid-row: 1; border-right: 2px solid #444; border-bottom: 2px solid #444; }
+        #top-ruler { grid-column: 2; grid-row: 1; display: flex; border-bottom: 2px solid #444; }
+        #left-ruler { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; border-right: 2px solid #444; }
+        .ruler-cell { display: flex; justify-content: center; align-items: center; color: #e6b800; font-size: 1em; box-sizing: border-box; }
+
+        #map-wrapper { grid-column: 2; grid-row: 2; position: relative; width: 800px; height: 800px; cursor: crosshair; overflow: hidden; }
+        #map-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; image-rendering: auto; }
+        #fog-canvas { position: absolute; top: 0; left: 0; z-index: 10; }
+        
+        #compass { position: absolute; bottom: 20px; right: 20px; width: 80px; height: 80px; background-color: rgba(240, 235, 220, 0.9); border-radius: 50%; z-index: 20; pointer-events: none; border: 4px solid #333; box-shadow: 4px 4px 0px rgba(0,0,0,0.8); font-family: sans-serif; }
+        .dir { position: absolute; font-weight: bold; font-size: 14px; color: #333; }
+        .n { top: 5px; left: 50%; transform: translateX(-50%); color: #8b0000; } 
+        .s { bottom: 5px; left: 50%; transform: translateX(-50%); }
+        .e { right: 8px; top: 50%; transform: translateY(-50%); }
+        .o { left: 8px; top: 50%; transform: translateY(-50%); }
+        .center-dot { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background-color: #333; border-radius: 50%; transform: translate(-50%, -50%); }
+        
+        #top-ui { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: #000; padding: 8px 16px; border: 2px solid #e6b800; z-index: 30; color: #e6b800; display: none; box-shadow: 4px 4px 0px rgba(0,0,0,0.8); }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen" class="screen active-screen">
+        <h1 class="game-title">SALA DE MAPAS</h1>
+        
+        <div id="hotspot-mapa" class="hotspot" 
+             onclick="selectRole('player')" 
+             onmouseover="setActionText('Examinar el Mapa (Entrar como Jugador)')" 
+             onmouseout="clearActionText()">
+        </div>
+        
+        <div id="hotspot-tabernero" class="hotspot" 
+             onclick="selectRole('dm')" 
+             onmouseover="setActionText('Hablar con El Tabernero (Entrar como DM)')" 
+             onmouseout="clearActionText()">
+        </div>
+
+        <div id="action-text"></div>
+    </div>
+
+    <div id="dm-setup-screen" class="screen">
+        <div class="setup-box">
+            <h2>Preparar Sesión (DM)</h2>
+            <div id="setup-main-buttons">
+                <button class="btn" onclick="showPanel('upload-panel')" style="width: 100%;">Cargar Nuevo Mapa</button>
+                <button class="btn" style="background-color: #005500; border-color: #00aa00; border-bottom-color:#002200; border-right-color:#002200; width: 100%;" onclick="showPanel('select-panel')">Seleccionar Existente</button>
+            </div>
+
+            <div id="upload-panel" class="panel">
+                <div class="form-group"><label>Campaña</label><input type="text" id="new-campaign" class="form-input" placeholder="Ej: La Mina Perdida"></div>
+                <div class="form-group"><label>Nombre del Mapa</label><input type="text" id="new-map-name" class="form-input" placeholder="Ej: Guarida de Orcos"></div>
+                <div class="form-group"><label>Imagen del Mapa</label><input type="file" id="new-map-file" class="form-input" accept="image/*" style="font-size:0.8em;"></div>
+                <div class="form-group">
+                    <label>Tamaño de Grilla: <span id="setup-grid-val">40px</span></label>
+                    <input type="range" id="setup-grid-size" min="20" max="100" step="5" value="40" style="width: 100%;">
+                </div>
+                <button class="btn" onclick="uploadNewMap()" style="width: 100%; margin:0;">Subir y Comenzar</button>
+                <button class="btn" onclick="showPanel('main')" style="background:transparent; border:none; box-shadow:none; width: 100%; font-size: 1em; margin-top:5px; color:#aaa;">Cancelar</button>
+            </div>
+
+            <div id="select-panel" class="panel">
+                <div class="form-group"><label>Campaña</label><select id="select-campaign" class="form-input" onchange="updateMapDropdown('select-campaign', 'select-map')"><option>Cargando...</option></select></div>
+                <div class="form-group"><label>Mapa</label><select id="select-map" class="form-input"><option>Seleccione Campaña primero</option></select></div>
+                <button class="btn" onclick="loadExistingMap('select-campaign', 'select-map')" style="width: 100%; margin:0; background-color: #005500; border-color: #00aa00; border-bottom-color:#002200; border-right-color:#002200;">Cargar y Comenzar</button>
+                <button class="btn" onclick="showPanel('main')" style="background:transparent; border:none; box-shadow:none; width: 100%; font-size: 1em; margin-top:5px; color:#aaa;">Cancelar</button>
+            </div>
+            <br><button class="btn" style="background-color: #333; border-color: #777; border-bottom-color:#111; border-right-color:#111; margin-top: 15px;" onclick="returnToMenu()">Despedirse (Volver)</button>
+        </div>
+    </div>
+
+    <div id="player-setup-screen" class="screen">
+        <div class="setup-box">
+            <h2>Unirse a la Partida</h2>
+            <div class="form-group"><label>Campaña</label><select id="player-select-campaign" class="form-input" onchange="updateMapDropdown('player-select-campaign', 'player-select-map')"><option>Cargando...</option></select></div>
+            <div class="form-group"><label>Mapa</label><select id="player-select-map" class="form-input"><option>Seleccione Campaña primero</option></select></div>
+            <button class="btn" onclick="joinPlayerMap()" style="width: 100%; margin:0; background-color: #005500; border-color: #00aa00; border-bottom-color:#002200; border-right-color:#002200;">Entrar a la Sala</button>
+            <button class="btn" onclick="returnToMenu()" style="background:transparent; border:none; box-shadow:none; width: 100%; font-size: 1em; margin-top:15px; color:#aaa;">Dejar de mirar (Volver)</button>
+        </div>
+    </div>
+
+    <div id="main-ui-screen" class="screen">
+        <button id="save-btn" class="btn" onclick="saveMapToServer()">Guardar Progreso</button>
+        <button id="return-btn" class="btn" onclick="returnToMenu()">Volver a la Taberna</button>
+
+        <div id="main-container">
+            <div id="dm-sidebar">
+                <h2>Glosario DM</h2>
+                <div class="dm-section">
+                    <label>Campaña</label>
+                    <input type="text" id="campaign-input" disabled>
+                    <label>Nombre del Mapa</label>
+                    <input type="text" id="mapname-input" disabled>
+                </div>
+                <div class="dm-section" style="flex-grow: 1; border: none;">
+                    <label>Puntos Notables</label>
+                    <ul id="poi-list"></ul>
+                </div>
+            </div>
+
+            <div id="map-area">
+                <div id="top-ui">Modo DM: Click para agregar Puntos Notables</div>
+                
+                <div id="map-layout">
+                    <div id="corner-spacer"></div>
+                    <div id="top-ruler"></div>
+                    <div id="left-ruler"></div>
+                    
+                    <div id="map-wrapper">
+                        <div id="map-background"></div>
+                        <canvas id="fog-canvas" width="800" height="800"></canvas>
+                        <div id="compass">
+                            <div class="dir n">N</div><div class="dir e">E</div><div class="dir s">S</div><div class="dir o">O</div><div class="center-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- NUEVAS FUNCIONES DE POINT & CLICK ---
+        function setActionText(text) {
+            document.getElementById('action-text').innerText = text;
+        }
+        function clearActionText() {
+            document.getElementById('action-text').innerText = '';
+        }
+        // -----------------------------------------
+
+        const canvas = document.getElementById('fog-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const loginScreen = document.getElementById('login-screen');
+        const dmSetupScreen = document.getElementById('dm-setup-screen');
+        const playerSetupScreen = document.getElementById('player-setup-screen');
+        const mainUiScreen = document.getElementById('main-ui-screen');
+        const topUi = document.getElementById('top-ui');
+        const topRuler = document.getElementById('top-ruler');
+        const leftRuler = document.getElementById('left-ruler');
+        
+        let currentRole = '';
+        let mapData = { campaign: '', mapName: '', gridSize: 40, gridState: {}, pois: [], imagePath: '' };
+        let availableMaps = {}; 
+
+        function loadLocalData() {
+            const saved = localStorage.getItem('salaDeMapasData');
+            if (saved) mapData = JSON.parse(saved);
+        }
+        function saveLocalData() { localStorage.setItem('salaDeMapasData', JSON.stringify(mapData)); }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'salaDeMapasData') {
+                loadLocalData();
+                renderAll();
+            }
+        });
+
+        async function saveMapToServer() {
+            let btn = document.getElementById('save-btn');
+            btn.innerText = "Guardando...";
+            
+            try {
+                let response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(mapData)
+                });
+                
+                let result = await response.json();
+                if (result.success) {
+                    btn.innerText = "¡Guardado!";
+                    btn.style.backgroundColor = "#008800";
+                    setTimeout(() => {
+                        btn.innerText = "Guardar Progreso";
+                        btn.style.backgroundColor = "#005500";
+                    }, 2000);
+                } else {
+                    alert("Error guardando: " + result.error);
+                    btn.innerText = "Guardar Progreso";
+                }
+            } catch (e) {
+                alert("Error de conexión al servidor.");
+                btn.innerText = "Guardar Progreso";
+            }
+        }
+
+        async function fetchMapFromServer(campana, mapaNombre, imagePath) {
+            try {
+                let response = await fetch(`/api/load?campana=${encodeURIComponent(campana)}&mapa=${encodeURIComponent(mapaNombre)}`);
+                let result = await response.json();
+                
+                if (!result.empty && !result.error) {
+                    mapData = result;
+                } else {
+                    mapData = { campaign: campana, mapName: mapaNombre, gridSize: 40, gridState: {}, pois: [], imagePath: imagePath };
+                }
+                
+                saveLocalData();
+                startMap();
+
+            } catch (e) { console.error("Error", e); }
+        }
+
+        function returnToMenu() {
+            dmSetupScreen.classList.remove('active-screen');
+            playerSetupScreen.classList.remove('active-screen');
+            mainUiScreen.classList.remove('active-screen');
+            loginScreen.classList.add('active-screen');
+            currentRole = '';
+            clearActionText();
+        }
+
+        function selectRole(role) {
+            currentRole = role;
+            loginScreen.classList.remove('active-screen');
+            
+            if (role === 'dm') {
+                dmSetupScreen.classList.add('active-screen');
+                showPanel('main');
+            } else {
+                playerSetupScreen.classList.add('active-screen');
+                fetchExistingMaps(); 
+            }
+        }
+
+        document.getElementById('setup-grid-size').addEventListener('input', (e) => {
+            document.getElementById('setup-grid-val').innerText = `${e.target.value}px`;
+        });
+
+        function showPanel(panel) {
+            document.getElementById('setup-main-buttons').style.display = 'none';
+            document.getElementById('upload-panel').style.display = 'none';
+            document.getElementById('select-panel').style.display = 'none';
+
+            if (panel === 'main') {
+                document.getElementById('setup-main-buttons').style.display = 'block';
+            } else if (panel === 'upload-panel') {
+                document.getElementById('upload-panel').style.display = 'block';
+            } else if (panel === 'select-panel') {
+                document.getElementById('select-panel').style.display = 'block';
+                fetchExistingMaps(); 
+            }
+        }
+
+        async function fetchExistingMaps() {
+            try {
+                let response = await fetch('/api/mapas');
+                availableMaps = await response.json();
+                
+                let html = '<option value="">-- Seleccionar Campaña --</option>';
+                for (let camp in availableMaps) { html += `<option value="${camp}">${camp}</option>`; }
+                document.getElementById('select-campaign').innerHTML = html;
+                document.getElementById('player-select-campaign').innerHTML = html;
+            } catch (e) {}
+        }
+
+        function updateMapDropdown(campSelectId, mapSelectId) {
+            let camp = document.getElementById(campSelectId).value;
+            let mapSelect = document.getElementById(mapSelectId);
+            mapSelect.innerHTML = '';
+            if (camp && availableMaps[camp]) {
+                availableMaps[camp].forEach(m => {
+                    mapSelect.innerHTML += `<option value="${m.nombre_mapa}" data-img="${m.ruta_relativa}">${m.nombre_mapa}</option>`;
+                });
+            }
+        }
+
+        async function uploadNewMap() {
+            let fileInput = document.getElementById('new-map-file');
+            let camp = document.getElementById('new-campaign').value;
+            let mapName = document.getElementById('new-map-name').value;
+            let gridSize = parseInt(document.getElementById('setup-grid-size').value);
+
+            if (!fileInput.files[0] || !camp || !mapName) { alert("Completa todos los campos."); return; }
+
+            let formData = new FormData();
+            formData.append('imagen', fileInput.files[0]);
+            formData.append('campana', camp);
+            formData.append('mapa', mapName);
+            formData.append('gridSize', gridSize);
+
+            try {
+                let response = await fetch('/api/upload', { method: 'POST', body: formData });
+                let result = await response.json();
+                
+                if (result.success) {
+                    mapData = { campaign: camp, mapName: mapName, gridSize: gridSize, gridState: {}, pois: [], imagePath: result.ruta };
+                    saveLocalData();
+                    startMap();
+                } else { alert(result.error); }
+            } catch (e) { alert("Error subiendo imagen."); }
+        }
+
+        function loadExistingMap(campSelectId, mapSelectId) {
+            let camp = document.getElementById(campSelectId).value;
+            let mapSelect = document.getElementById(mapSelectId);
+            let mapName = mapSelect.value;
+            if (!camp || !mapName) return;
+
+            let opt = mapSelect.options[mapSelect.selectedIndex];
+            let imagePath = opt.getAttribute('data-img');
+            fetchMapFromServer(camp, mapName, imagePath);
+        }
+
+        function joinPlayerMap() {
+            let camp = document.getElementById('player-select-campaign').value;
+            let mapSelect = document.getElementById('player-select-map');
+            let mapName = mapSelect.value;
+            if (!camp || !mapName) return;
+
+            let opt = mapSelect.options[mapSelect.selectedIndex];
+            let imagePath = opt.getAttribute('data-img');
+            fetchMapFromServer(camp, mapName, imagePath);
+        }
+
+        function startMap() {
+            dmSetupScreen.classList.remove('active-screen');
+            playerSetupScreen.classList.remove('active-screen');
+            mainUiScreen.classList.add('active-screen');
+
+            if (currentRole === 'dm') {
+                document.getElementById('dm-sidebar').style.display = 'flex';
+                topUi.style.display = 'block';
+            } else {
+                document.getElementById('dm-sidebar').style.display = 'none';
+                topUi.style.display = 'none';
+            }
+            renderAll();
+        }
+
+  function updateMapBackground() {
+            const bg = document.getElementById('map-background');
+            if (mapData.imagePath) { 
+                let path = mapData.imagePath;
+                // Si la ruta no empieza con http (mapas viejos locales), le agregamos la barra
+                if (!path.startsWith('http')) path = '/' + path; 
+                bg.style.backgroundImage = `url('${path}')`; 
+            } 
+            else { bg.style.backgroundImage = `none`; }
+        }
+
+        function renderAll() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateMapBackground();
+            updateRulers();
+            
+            if (currentRole === 'player') drawFog();
+            drawGrid(); 
+            drawPOIs();
+
+            if (currentRole === 'dm') {
+                document.getElementById('campaign-input').value = mapData.campaign || '';
+                document.getElementById('mapname-input').value = mapData.mapName || '';
+                updateSidebarUI();
+            }
+        }
+
+        function updateRulers() {
+            topRuler.innerHTML = ''; leftRuler.innerHTML = '';
+            let cols = canvas.width / mapData.gridSize; let rows = canvas.height / mapData.gridSize;
+            for (let c = 0; c < cols; c++) {
+                let div = document.createElement('div'); div.className = 'ruler-cell'; div.style.width = mapData.gridSize + 'px';
+                div.innerText = c >= 26 ? String.fromCharCode(64 + Math.floor(c/26)) + String.fromCharCode(65 + (c%26)) : String.fromCharCode(65 + c);
+                topRuler.appendChild(div);
+            }
+            for (let r = 0; r < rows; r++) {
+                let div = document.createElement('div'); div.className = 'ruler-cell'; div.style.height = mapData.gridSize + 'px';
+                div.innerText = r + 1; leftRuler.appendChild(div);
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1;
+            for (let x = 0; x <= canvas.width; x += mapData.gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+            for (let y = 0; y <= canvas.height; y += mapData.gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+        }
+
+        function drawFog() {
+            let cols = canvas.width / mapData.gridSize; let rows = canvas.height / mapData.gridSize;
+            for (let c = 0; c < cols; c++) {
+                for (let r = 0; r < rows; r++) {
+                    let state = mapData.gridState[`${c}-${r}`] || 0;
+                    if (state === 0) { ctx.fillStyle = `rgba(0, 0, 0, 0.95)`; ctx.fillRect(c * mapData.gridSize, r * mapData.gridSize, mapData.gridSize, mapData.gridSize); }
+                    else if (state === 1) { ctx.fillStyle = `rgba(0, 0, 0, 0.80)`; ctx.fillRect(c * mapData.gridSize, r * mapData.gridSize, mapData.gridSize, mapData.gridSize); }
+                }
+            }
+        }
+
+        function drawPOIs() {
+            mapData.pois.forEach(poi => {
+                let state = mapData.gridState[`${poi.col}-${poi.row}`] || 0;
+                let isFullyVisible = (currentRole === 'dm') || (state === 2) || poi.visibleToPlayers;
+                let isDotVisible = isFullyVisible || (state === 1); 
+
+                if (isDotVisible) {
+                    ctx.beginPath(); ctx.arc(poi.x, poi.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = isFullyVisible ? 'red' : 'darkred'; ctx.fill(); ctx.strokeStyle = 'black'; ctx.stroke();
+                }
+                if (isFullyVisible) {
+                    ctx.fillStyle = 'white'; ctx.font = 'bold 12px Arial'; ctx.shadowColor = "black"; ctx.shadowBlur = 4;
+                    ctx.fillText(poi.name, poi.x + 10, poi.y + 4); ctx.shadowBlur = 0; 
+                }
+            });
+        }
+
+        function togglePOIVisibility(id, isVisible) {
+            let poi = mapData.pois.find(p => p.id === id);
+            if (poi) { poi.visibleToPlayers = isVisible; saveLocalData(); renderAll(); }
+        }
+
+        function deletePOI(id) {
+            mapData.pois = mapData.pois.filter(p => p.id !== id);
+            saveLocalData(); renderAll();
+        }
+
+        function updateSidebarUI() {
+            let poiListEl = document.getElementById('poi-list');
+            poiListEl.innerHTML = '';
+            mapData.pois.forEach(poi => {
+                let li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="poi-header">
+                        <span><span class="poi-coord">[${poi.coord}]</span> ${poi.name}</span>
+                        <button onclick="deletePOI(${poi.id})" style="background:none; border:none; color:#ff4444; cursor:pointer;">❌</button>
+                    </div>
+                    <div class="poi-controls">
+                        <input type="checkbox" id="chk-${poi.id}" onchange="togglePOIVisibility(${poi.id}, this.checked)" ${poi.visibleToPlayers ? 'checked' : ''}>
+                        <label for="chk-${poi.id}">Forzar Visibilidad</label>
+                    </div>
+                `;
+                poiListEl.appendChild(li);
+            });
+        }
+
+        canvas.addEventListener('click', function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+
+            let col = Math.floor(clickX / mapData.gridSize); let row = Math.floor(clickY / mapData.gridSize);
+            let letter = col >= 26 ? String.fromCharCode(64 + Math.floor(col/26)) + String.fromCharCode(65 + (col%26)) : String.fromCharCode(65 + col);
+            let coordStr = `${letter}-${row + 1}`; 
+
+            if (currentRole === 'dm') {
+                let poiName = prompt(`Punto Notable en ${coordStr}:`);
+                if (poiName) {
+                    mapData.pois.push({ id: Date.now(), x: clickX, y: clickY, col: col, row: row, coord: coordStr, name: poiName, visibleToPlayers: false });
+                    saveLocalData(); renderAll();
+                }
+            } else {
+                let perceptionStr = prompt("Tirada de Percepción:");
+                if (!perceptionStr) return;
+                let perception = parseInt(perceptionStr);
+                
+                let brightRadius = 1; 
+                if (perception >= 10) brightRadius = 2; 
+                if (perception >= 15) brightRadius = 4; 
+                if (perception >= 20) brightRadius = 6; 
+                let revealRadius = brightRadius + 1; 
+
+                for (let c = col - revealRadius; c <= col + revealRadius; c++) {
+                    for (let r = row - revealRadius; r <= row + revealRadius; r++) {
+                        if (c >= 0 && r >= 0 && (c * mapData.gridSize) < canvas.width && (r * mapData.gridSize) < canvas.height) {
+                            let dist = Math.max(Math.abs(c - col), Math.abs(r - row));
+                            let cellKey = `${c}-${r}`;
+                            let currentState = mapData.gridState[cellKey] || 0;
+                            
+                            if (dist <= brightRadius) mapData.gridState[cellKey] = 2; 
+                            else if (dist <= revealRadius && currentState < 1) mapData.gridState[cellKey] = 1; 
+                        }
+                    }
+                }
+                saveLocalData(); renderAll();
+            }
+        });
+    </script>
+</body>
+</html>
