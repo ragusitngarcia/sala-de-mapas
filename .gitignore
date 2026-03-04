@@ -1,0 +1,11 @@
+# Ocultar carpetas de entorno virtual y caché
+__pycache__/
+*.pyc
+env/
+venv/
+
+# Ocultar la carpeta local de Mapas (ya usamos Cloudinary)
+Mapas/
+
+# Ocultar el ejecutador local de Windows
+iniciar_sala.bat
