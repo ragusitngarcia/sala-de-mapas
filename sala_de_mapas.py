@@ -8,16 +8,16 @@ import os
 
 app = Flask(__name__)
 
-# --- 1. CONFIGURACIÓN DE CLOUDINARY (Imágenes) ---
+# --- 1. CONFIGURACIÓN DE CLOUDINARY (Variables de Entorno) ---
 cloudinary.config(
-    cloud_name = "dqqnfpnjt",
-    api_key = "247744316653339",
-    api_secret = "TgSyz4lcoXfRfZ5yF0s97qf1lEY",
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key = os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
     secure = True
 )
 
-# --- 2. CONFIGURACIÓN DE MONGODB ATLAS (Datos y Niebla) ---
-MONGO_URI = "mongodb+srv://dm_tabernero:rcoY8Ynqjtznabh5@lodte.ylvopii.mongodb.net/?retryWrites=true&w=majority&appName=LODTE"
+# --- 2. CONFIGURACIÓN DE MONGODB ATLAS (Variables de Entorno) ---
+MONGO_URI = os.environ.get('MONGO_URI')
 client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
 db = client['sala_de_mapas']
 coleccion_mapas = db['mapas_metadata']
@@ -35,7 +35,7 @@ def servir_assets(filename):
 
 @app.route('/api/mapas', methods=['GET'])
 def obtener_estructura_mapas():
-    # En vez de leer carpetas, ahora le preguntamos a la Base de Datos qué mapas existen
+    # Le preguntamos a la Base de Datos qué mapas existen
     mapas_db = coleccion_mapas.find({}, {"_id": 0, "campaign": 1, "mapName": 1, "imagePath": 1})
     estructura = {}
     
@@ -46,7 +46,7 @@ def obtener_estructura_mapas():
             
         estructura[campana].append({
             "nombre_mapa": mapa.get("mapName", "Sin Nombre"),
-            "ruta_relativa": mapa.get("imagePath", "") # Ahora esto es un link a Cloudinary
+            "ruta_relativa": mapa.get("imagePath", "") # Link a Cloudinary
         })
 
     return jsonify(estructura)
@@ -83,7 +83,6 @@ def subir_mapa():
                 "imagePath": url_imagen,
                 "gridSize": int(grid_size)
             },
-            # Si el mapa es nuevo, creamos los arrays vacíos. Si ya existía, no pisamos la niebla vieja.
             "$setOnInsert": {
                 "gridState": {},
                 "pois": []
