@@ -12,15 +12,15 @@
             background-image: url('/assets/Sala de Mapas Fondo.jpeg');
             background-size: cover;
             background-position: center;
-            background-attachment: fixed; /* Mantiene la taberna quieta al hacer scroll */
+            background-attachment: fixed; 
             image-rendering: pixelated; 
             background-color: #000; 
             color: #d3d3d3; 
             font-family: 'VT323', monospace; 
             font-size: 22px; 
-            min-height: 100vh; /* Permite crecer más allá del 100% si hace falta */
+            min-height: 100vh; 
             box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
-            overflow-x: hidden; /* Evita scroll horizontal en toda la página */
+            overflow-x: hidden; 
         }
         
         .screen { display: none; width: 100%; min-height: 100vh; }
@@ -31,11 +31,10 @@
         h1 { color: #e6b800; font-size: 4em; margin-bottom: 40px; text-shadow: 4px 4px 0px #000; letter-spacing: 2px; text-align: center; }
         h2 { color: #e6b800; text-shadow: 2px 2px 0px #000; font-size: 1.8em; margin-top: 0; }
 
-        /* Cajas de menú ahora son responsive */
         .setup-box { 
             background-color: rgba(20, 20, 20, 0.9); 
             padding: 30px; text-align: center; 
-            width: 90%; max-width: 400px; /* Se achica en celulares */
+            width: 90%; max-width: 400px; 
             border: 4px solid #8b0000; 
             box-shadow: 8px 8px 0px rgba(0,0,0,0.8); 
             box-sizing: border-box;
@@ -51,52 +50,64 @@
         .form-input { width: 100%; padding: 8px; background: #000; color: #00ff00; font-family: 'VT323', monospace; font-size: 1.1em; border: 2px solid #555; box-sizing: border-box; }
         .panel { display: none; margin-top: 20px; border-top: 2px dashed #444; padding-top: 20px; }
 
-        /* --- MENÚ POINT AND CLICK (Específico, sin scroll) --- */
+        /* --- MENÚ POINT AND CLICK --- */
         #login-screen { position: relative; width: 100%; height: 100vh; overflow: hidden; }
         
-        .game-title { position: absolute; top: 5%; width: 100%; pointer-events: none; margin: 0; z-index: 10; }
-        
+        .game-title { position: absolute; top: 5%; width: 100%; pointer-events: none; margin: 0; z-index: 10; text-align: center; }
         #action-text { position: absolute; bottom: 8%; width: 100%; text-align: center; color: #00ff00; font-size: 2.5em; text-shadow: 3px 3px 0px #000; pointer-events: none; min-height: 1.2em; z-index: 10; padding: 0 15px; box-sizing: border-box; }
 
-        /* Controles de Música */
         #music-controls {
             position: absolute; top: 20px; left: 20px; z-index: 20; 
             display: flex; align-items: center; gap: 15px; 
             background-color: rgba(20, 20, 20, 0.8); border: 2px solid #555; 
             padding: 8px 15px; box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
-            flex-wrap: wrap; /* En celulares muy chicos, se adapta */
+            flex-wrap: wrap; 
         }
-        #music-toggle-btn {
-            background: transparent; border: none; color: #e6b800; 
-            font-family: 'VT323', monospace; font-size: 1.2em; 
-            cursor: pointer; text-shadow: 1px 1px 0px #000; padding: 0; margin: 0;
-        }
+        #music-toggle-btn { background: transparent; border: none; color: #e6b800; font-family: 'VT323', monospace; font-size: 1.2em; cursor: pointer; text-shadow: 1px 1px 0px #000; padding: 0; margin: 0; }
         #music-toggle-btn:hover { color: #fff; }
         #music-volume { width: 80px; cursor: pointer; accent-color: #8b0000; }
 
-        /* Animación Hint */
-        @keyframes hotspotHint {
-            0% { background-color: transparent; box-shadow: none; }
-            10% { background-color: transparent; box-shadow: none; }
-            23% { background-color: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.3); }
-            36% { background-color: transparent; box-shadow: none; }
-            100% { background-color: transparent; box-shadow: none; }
+        /* --- NUEVO: LAS CAPAS VISUALES CON RECORTE (.PNG) --- */
+        @keyframes hotspotInteligente {
+            0% { filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0)); }
+            10% { filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0)); }
+            23% { filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.7)); } /* Brillo con la forma exacta de tu PNG */
+            36% { filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0)); }
+            100% { filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0)); }
         }
 
-        .hotspot { position: absolute; cursor: pointer; z-index: 5; animation: hotspotHint 15s infinite; }
-        .hotspot:hover { background-color: rgba(255, 255, 255, 0.1) !important; animation: none; }
+        .visual-layer {
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%;
+            object-fit: cover; /* Clave para que coincida exactamente con el fondo original */
+            object-position: center;
+            pointer-events: none; /* Los clics las atraviesan hacia los hotspots invisibles */
+            z-index: 2; /* Por encima del fondo, por debajo de los textos */
+            animation: hotspotInteligente 15s infinite;
+            transition: filter 0.3s ease; /* Transición suave al pasar el mouse */
+        }
 
-        /* CALIBRACIÓN DE ZONAS */
+        /* Cuando el mouse pasa por el cuadro invisible, activamos esta clase en la imagen */
+        .visual-layer.hovered {
+            filter: drop-shadow(0 0 25px rgba(255, 255, 255, 1)) brightness(1.2); 
+            animation: none; /* Frena el loop automático mientras el mouse esté encima */
+        }
+
+        /* --- LAS ZONAS DE CLIC INVISIBLES --- */
+        .hotspot { 
+            position: absolute; cursor: pointer; z-index: 5; 
+            /* Ya no tienen fondo ni animación propia, solo detectan el mouse */
+            background-color: transparent; 
+        }
+
         #hotspot-mapa { top: 15%; left: 8%; width: 28%; height: 38%; }
         #hotspot-tabernero { top: 35%; right: 12%; width: 32%; height: 50%; }
 
         /* --- INTERFAZ PRINCIPAL DEL MAPA --- */
         #main-ui-screen { position: relative; width: 100%; min-height: 100vh; background-color: rgba(0,0,0,0.85); flex-direction: column; }
         
-        #top-right-controls {
-            position: absolute; top: 15px; right: 20px; z-index: 100;
-            display: flex; flex-direction: column; gap: 10px; 
-        }
+        #top-right-controls { position: absolute; top: 15px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
         #top-right-controls .btn { margin: 0; font-size: 1.1em; padding: 6px 12px; width: 100%; text-align: center; }
 
         #save-btn { background-color: #005500; border-color: #00aa00; border-bottom-color: #002200; border-right-color: #002200;}
@@ -136,48 +147,15 @@
         
         #top-ui { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: #000; padding: 8px 16px; border: 2px solid #e6b800; z-index: 30; color: #e6b800; display: none; box-shadow: 4px 4px 0px rgba(0,0,0,0.8); text-align: center; width: 90%; max-width: 400px; }
 
-        /* ========================================================= */
-        /* RESPONSIVE DESIGN (TABLETS Y CELULARES)                   */
-        /* ========================================================= */
         @media (max-width: 1150px) {
-            h1 { font-size: 3em; margin-top: 80px; } /* Evita tapar los controles de música en celular */
-            
-            #main-container {
-                flex-direction: column; /* Apila el menú DM arriba del mapa */
-            }
-            
-            #dm-sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 4px solid #8b0000;
-                max-height: 40vh; /* Permite scroll interno si hay muchos Puntos Notables */
-            }
-
-            #top-right-controls {
-                position: static; /* Los saca de la esquina para que no tapen la pantalla */
-                flex-direction: row;
-                justify-content: center;
-                padding: 10px;
-                background-color: #111;
-                border-bottom: 2px solid #333;
-            }
+            h1 { font-size: 3em; margin-top: 80px; } 
+            #main-container { flex-direction: column; }
+            #dm-sidebar { width: 100%; border-right: none; border-bottom: 4px solid #8b0000; max-height: 40vh; }
+            #top-right-controls { position: static; flex-direction: row; justify-content: center; padding: 10px; background-color: #111; border-bottom: 2px solid #333; }
             #top-right-controls .btn { width: auto; font-size: 1em; padding: 8px 10px; }
-
-            #map-area {
-                display: block; /* Habilita el comportamiento de swipe/scroll interno */
-                padding: 10px;
-                height: 60vh; /* Ocupa el resto de la pantalla */
-            }
-
-            #map-layout {
-                margin: 0; /* Lo alinea arriba a la izquierda para deslizar naturalmente */
-            }
-            
-            #top-ui {
-                position: relative;
-                top: 0; left: 0; transform: none;
-                margin: 10px auto;
-            }
+            #map-area { display: block; padding: 10px; height: 60vh; }
+            #map-layout { margin: 0; }
+            #top-ui { position: relative; top: 0; left: 0; transform: none; margin: 10px auto; }
         }
     </style>
 </head>
@@ -185,6 +163,9 @@
 
     <div id="login-screen" class="screen active-screen">
         
+        <img id="img-mapa" src="/assets/mapa.png" class="visual-layer">
+        <img id="img-tabernero" src="/assets/tabernero.png" class="visual-layer">
+
         <div id="music-controls">
             <button id="music-toggle-btn" onclick="toggleMusic()">🔇 MÚSICA</button>
             <input type="range" id="music-volume" min="0" max="100" value="10" title="Volumen" onchange="changeVolume(this.value)">
@@ -194,14 +175,14 @@
         
         <div id="hotspot-mapa" class="hotspot" 
              onclick="selectRole('player')" 
-             onmouseover="setActionText('Examinar el Mapa (Entrar como Jugador)')" 
-             onmouseout="clearActionText()">
+             onmouseover="document.getElementById('img-mapa').classList.add('hovered'); setActionText('Examinar el Mapa (Entrar como Jugador)')" 
+             onmouseout="document.getElementById('img-mapa').classList.remove('hovered'); clearActionText()">
         </div>
         
         <div id="hotspot-tabernero" class="hotspot" 
              onclick="selectRole('dm')" 
-             onmouseover="setActionText('Hablar con El Tabernero (Entrar como DM)')" 
-             onmouseout="clearActionText()">
+             onmouseover="document.getElementById('img-tabernero').classList.add('hovered'); setActionText('Hablar con El Tabernero (Entrar como DM)')" 
+             onmouseout="document.getElementById('img-tabernero').classList.remove('hovered'); clearActionText()">
         </div>
 
         <div id="action-text"></div>
@@ -248,7 +229,6 @@
     </div>
 
     <div id="main-ui-screen" class="screen">
-        
         <div id="top-right-controls">
             <button id="save-btn" class="btn" onclick="saveMapToServer()">Guardar Progreso</button>
             <button id="return-btn" class="btn" onclick="returnToMenu()">Volver a la Taberna</button>
