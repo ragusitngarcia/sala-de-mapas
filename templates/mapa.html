@@ -64,25 +64,53 @@
         #music-toggle-btn:hover { color: #fff; }
         #music-volume { width: 80px; cursor: pointer; accent-color: #8b0000; }
 
-        /* --- ANIMACIÓN ZONAS CALIENTES (BRILlO CADA 15 SEG) --- */
+        /* --- NUEVO: ANIMACIÓN HINT LENTA (DURA 4 SEG) --- */
         @keyframes hotspotHint {
             0% { background-color: transparent; box-shadow: none; }
-            90% { background-color: transparent; box-shadow: none; }
-            95% { background-color: rgba(255, 255, 255, 0.15); box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.4); }
+            10% { background-color: transparent; box-shadow: none; }
+            /* Fade in suave a los 2seg */
+            23% { background-color: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.3); }
+            /* Fade out suave a los 4seg */
+            36% { background-color: transparent; box-shadow: none; }
             100% { background-color: transparent; box-shadow: none; }
         }
 
         .hotspot { 
             position: absolute; cursor: pointer; z-index: 5; 
-            animation: hotspotHint 15s infinite; /* Se repite cada 15 segundos */
+            animation: hotspotHint 15s infinite; /* Ciclo total de 15s */
         }
         .hotspot:hover { 
-            background-color: rgba(255, 255, 255, 0.1); 
-            animation: none; /* Frenar el destello si el mouse ya está encima */
+            background-color: rgba(255, 255, 255, 0.1) !important; /* Brillo manual al pasar mouse */
+            animation: none; /* Frenar el hint automático */
         }
 
-        #hotspot-mapa { top: 25%; left: 8%; width: 25%; height: 45%; }
-        #hotspot-tabernero { top: 40%; right: 10%; width: 35%; height: 45%; }
+        /* --- CALIBRACIÓN DE ZONAS (Modificá estos porcentajes) --- */
+
+        #hotspot-mapa {
+            /* POSICIÓN: top (distancia del techo), left (distancia de la izquierda) */
+            top: 15%; /* <- Subí este número para bajarlo, bajalo para subirlo */
+            left: 8%;
+
+            /* TAMAÑO: width (ancho), height (alto) */
+            width: 28%; /* <- Ajustá el ancho del mapa */
+            height: 38%; /* <- Ajustá el alto del mapa */
+            
+            background-color: rgba(255, 255, 255, 0.2); /* BORRAME LUEGO */
+        }
+
+        #hotspot-tabernero {
+            /* POSICIÓN: top (distancia del techo), right (distancia de la derecha) */
+            top: 35%; /* <- Centrá verticalmente al tabernero */
+            right: 12%; 
+
+            /* TAMAÑO: width (ancho), height (alto) */
+            width: 32%; /* <- Ajustá el ancho del cuerpo del tabernero */
+            height: 50%; /* <- Ajustá el alto (desde la cabeza a la barra) */
+
+            background-color: rgba(255, 255, 255, 0.2); /* BORRAME LUEGO */
+        }
+
+        /* --------------------------------------------------------- */
         
         /* --- INTERFAZ PRINCIPAL DEL MAPA --- */
         #main-ui-screen { position: relative; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); }
@@ -281,9 +309,7 @@
         function changeVolume(val) {
             sonidoFondo.volume = val / 100;
             // Si suben el volumen pero estaba pausado, lo encendemos
-            if (sonidoFondo.paused && val > 0) {
-                toggleMusic();
-            }
+            if (sonidoFondo.paused && val > 0) { toggleMusic(); }
         }
 
         // Intento de Autoplay cuando carga la página
@@ -337,17 +363,20 @@
             currentRole = '';
             clearActionText();
             
-            // Volver a activar la música si volvemos a la taberna
-            if (document.getElementById('music-toggle-btn').innerText.includes('ON')) {
+            // Volver a activar la música si volvemos a la taberna y el usuario no la muteó
+            const currentMusicStatus = localStorage.getItem('musicStatus') || 'on';
+            if (currentMusicStatus === 'on') {
                 sonidoFondo.play().catch(e=>console.log(e));
+                document.getElementById('music-toggle-btn').innerText = '🔊 ON';
+            } else {
+                document.getElementById('music-toggle-btn').innerText = '🔇 OFF';
             }
         }
 
         function selectRole(role) {
             currentRole = role;
             
-            // Pausar música de fondo al entrar a una sala
-            sonidoFondo.pause();
+            // YA NO PAUSAMOS LA MÚSICA AQUÍ. Te acompaña durante el setup.
             
             // Efecto de sonido del rol
             if (role === 'dm') {
@@ -366,6 +395,31 @@
                 fetchExistingMaps(); 
             }
         }
+
+        function startMap() {
+            // AHORA SÍ: Pausar música de fondo justo antes de entrar a la sala propiamente dicha.
+            sonidoFondo.pause();
+            
+            // Guardar estado de la música para cuando volvamos
+            const isMusicPaused = sonidoFondo.paused;
+            const btnText = document.getElementById('music-toggle-btn').innerText;
+            if (btnText.includes('ON') && !isMusicPaused) {
+                localStorage.setItem('musicStatus', 'on');
+            } else if (btnText.includes('OFF')) {
+                localStorage.setItem('musicStatus', 'off');
+            }
+
+            dmSetupScreen.classList.remove('active-screen');
+            playerSetupScreen.classList.remove('active-screen');
+            mainUiScreen.classList.add('active-screen');
+
+            if (currentRole === 'dm') { document.getElementById('dm-sidebar').style.display = 'flex'; topUi.style.display = 'block'; } 
+            else { document.getElementById('dm-sidebar').style.display = 'none'; topUi.style.display = 'none'; }
+            renderAll();
+        }
+
+        // --- EL RESTO DEL CÓDIGO SIGUE IGUAL (OMITIDO PARA BREVEDAD) ---
+        // (Asegurate de incluir todas las funciones de canvas, grid, POIs, etc.)
 
         document.getElementById('setup-grid-size').addEventListener('input', (e) => {
             document.getElementById('setup-grid-val').innerText = `${e.target.value}px`;
@@ -443,16 +497,6 @@
             let opt = mapSelect.options[mapSelect.selectedIndex];
             let imagePath = opt.getAttribute('data-img');
             fetchMapFromServer(camp, mapName, imagePath);
-        }
-
-        function startMap() {
-            dmSetupScreen.classList.remove('active-screen');
-            playerSetupScreen.classList.remove('active-screen');
-            mainUiScreen.classList.add('active-screen');
-
-            if (currentRole === 'dm') { document.getElementById('dm-sidebar').style.display = 'flex'; topUi.style.display = 'block'; } 
-            else { document.getElementById('dm-sidebar').style.display = 'none'; topUi.style.display = 'none'; }
-            renderAll();
         }
 
         function updateMapBackground() {
