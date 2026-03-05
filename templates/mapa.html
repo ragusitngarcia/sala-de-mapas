@@ -49,8 +49,37 @@
         
         #action-text { position: absolute; bottom: 8%; width: 100%; text-align: center; color: #00ff00; font-size: 2.5em; text-shadow: 3px 3px 0px #000; pointer-events: none; min-height: 1.2em; z-index: 10; }
 
-        .hotspot { position: absolute; cursor: pointer; z-index: 5; }
-        .hotspot:hover { background-color: rgba(255, 255, 255, 0.1); }
+        /* --- CONTROLES DE MÚSICA --- */
+        #music-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 20; 
+            display: flex; align-items: center; gap: 15px; 
+            background-color: rgba(20, 20, 20, 0.8); border: 2px solid #555; 
+            padding: 8px 15px; box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+        }
+        #music-toggle-btn {
+            background: transparent; border: none; color: #e6b800; 
+            font-family: 'VT323', monospace; font-size: 1.2em; 
+            cursor: pointer; text-shadow: 1px 1px 0px #000; padding: 0; margin: 0;
+        }
+        #music-toggle-btn:hover { color: #fff; }
+        #music-volume { width: 80px; cursor: pointer; accent-color: #8b0000; }
+
+        /* --- ANIMACIÓN ZONAS CALIENTES (BRILlO CADA 15 SEG) --- */
+        @keyframes hotspotHint {
+            0% { background-color: transparent; box-shadow: none; }
+            90% { background-color: transparent; box-shadow: none; }
+            95% { background-color: rgba(255, 255, 255, 0.15); box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.4); }
+            100% { background-color: transparent; box-shadow: none; }
+        }
+
+        .hotspot { 
+            position: absolute; cursor: pointer; z-index: 5; 
+            animation: hotspotHint 15s infinite; /* Se repite cada 15 segundos */
+        }
+        .hotspot:hover { 
+            background-color: rgba(255, 255, 255, 0.1); 
+            animation: none; /* Frenar el destello si el mouse ya está encima */
+        }
 
         #hotspot-mapa { top: 25%; left: 8%; width: 25%; height: 45%; }
         #hotspot-tabernero { top: 40%; right: 10%; width: 35%; height: 45%; }
@@ -58,23 +87,12 @@
         /* --- INTERFAZ PRINCIPAL DEL MAPA --- */
         #main-ui-screen { position: relative; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); }
         
-        /* Contenedor apilado para los botones de arriba a la derecha */
         #top-right-controls {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 10px; /* Separación vertical entre los botones */
+            position: absolute; top: 15px; right: 20px; z-index: 100;
+            display: flex; flex-direction: column; gap: 10px; 
         }
         
-        #top-right-controls .btn {
-            margin: 0; /* Anula el margen global de .btn */
-            font-size: 1.1em; 
-            padding: 6px 12px;
-            width: 100%; /* Obliga a que ambos botones tengan el mismo ancho */
-        }
+        #top-right-controls .btn { margin: 0; font-size: 1.1em; padding: 6px 12px; width: 100%; }
 
         #save-btn { background-color: #005500; border-color: #00aa00; border-bottom-color: #002200; border-right-color: #002200;}
         #return-btn { background-color: #333; border-color: #777; border-bottom-color: #111; border-right-color: #111; }
@@ -117,6 +135,12 @@
 <body>
 
     <div id="login-screen" class="screen active-screen">
+        
+        <div id="music-controls">
+            <button id="music-toggle-btn" onclick="toggleMusic()">🔇 MÚSICA</button>
+            <input type="range" id="music-volume" min="0" max="100" value="10" title="Volumen" onchange="changeVolume(this.value)">
+        </div>
+
         <h1 class="game-title">SALA DE MAPAS</h1>
         
         <div id="hotspot-mapa" class="hotspot" 
@@ -234,9 +258,43 @@
         let mapData = { campaign: '', mapName: '', gridSize: 40, gridState: {}, pois: [], imagePath: '' };
         let availableMaps = {}; 
 
-        // --- CARGAR LOS AUDIOS ---
+        // --- SISTEMA DE AUDIOS ---
         const sonidoDM = new Audio('/assets/audio_dm.mp3');
         const sonidoJugador = new Audio('/assets/audio_jugador.mp3');
+        
+        // Música de Fondo
+        const sonidoFondo = new Audio('/assets/audio_fondo.mp3');
+        sonidoFondo.loop = true;
+        sonidoFondo.volume = 0.1; // 10% por defecto
+
+        function toggleMusic() {
+            const btn = document.getElementById('music-toggle-btn');
+            if (sonidoFondo.paused) {
+                sonidoFondo.play().catch(e => console.log("Bloqueado por el navegador", e));
+                btn.innerText = '🔊 ON';
+            } else {
+                sonidoFondo.pause();
+                btn.innerText = '🔇 OFF';
+            }
+        }
+
+        function changeVolume(val) {
+            sonidoFondo.volume = val / 100;
+            // Si suben el volumen pero estaba pausado, lo encendemos
+            if (sonidoFondo.paused && val > 0) {
+                toggleMusic();
+            }
+        }
+
+        // Intento de Autoplay cuando carga la página
+        window.addEventListener('DOMContentLoaded', () => {
+            sonidoFondo.play().then(() => {
+                document.getElementById('music-toggle-btn').innerText = '🔊 ON';
+            }).catch(e => {
+                // Si el navegador bloquea el Autoplay, dejamos el botón en OFF para que el usuario decida
+                document.getElementById('music-toggle-btn').innerText = '🔇 OFF';
+            });
+        });
 
         function loadLocalData() {
             const saved = localStorage.getItem('salaDeMapasData');
@@ -245,55 +303,29 @@
         function saveLocalData() { localStorage.setItem('salaDeMapasData', JSON.stringify(mapData)); }
 
         window.addEventListener('storage', (e) => {
-            if (e.key === 'salaDeMapasData') {
-                loadLocalData();
-                renderAll();
-            }
+            if (e.key === 'salaDeMapasData') { loadLocalData(); renderAll(); }
         });
 
         async function saveMapToServer() {
             let btn = document.getElementById('save-btn');
             btn.innerText = "Guardando...";
-            
             try {
-                let response = await fetch('/api/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(mapData)
-                });
-                
+                let response = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mapData) });
                 let result = await response.json();
                 if (result.success) {
-                    btn.innerText = "¡Guardado!";
-                    btn.style.backgroundColor = "#008800";
-                    setTimeout(() => {
-                        btn.innerText = "Guardar Progreso";
-                        btn.style.backgroundColor = "#005500";
-                    }, 2000);
-                } else {
-                    alert("Error guardando: " + result.error);
-                    btn.innerText = "Guardar Progreso";
-                }
-            } catch (e) {
-                alert("Error de conexión al servidor.");
-                btn.innerText = "Guardar Progreso";
-            }
+                    btn.innerText = "¡Guardado!"; btn.style.backgroundColor = "#008800";
+                    setTimeout(() => { btn.innerText = "Guardar Progreso"; btn.style.backgroundColor = "#005500"; }, 2000);
+                } else { alert("Error guardando: " + result.error); btn.innerText = "Guardar Progreso"; }
+            } catch (e) { alert("Error de conexión al servidor."); btn.innerText = "Guardar Progreso"; }
         }
 
         async function fetchMapFromServer(campana, mapaNombre, imagePath) {
             try {
                 let response = await fetch(`/api/load?campana=${encodeURIComponent(campana)}&mapa=${encodeURIComponent(mapaNombre)}`);
                 let result = await response.json();
-                
-                if (!result.empty && !result.error) {
-                    mapData = result;
-                } else {
-                    mapData = { campaign: campana, mapName: mapaNombre, gridSize: 40, gridState: {}, pois: [], imagePath: imagePath };
-                }
-                
-                saveLocalData();
-                startMap();
-
+                if (!result.empty && !result.error) { mapData = result; } 
+                else { mapData = { campaign: campana, mapName: mapaNombre, gridSize: 40, gridState: {}, pois: [], imagePath: imagePath }; }
+                saveLocalData(); startMap();
             } catch (e) { console.error("Error", e); }
         }
 
@@ -304,12 +336,20 @@
             loginScreen.classList.add('active-screen');
             currentRole = '';
             clearActionText();
+            
+            // Volver a activar la música si volvemos a la taberna
+            if (document.getElementById('music-toggle-btn').innerText.includes('ON')) {
+                sonidoFondo.play().catch(e=>console.log(e));
+            }
         }
 
         function selectRole(role) {
             currentRole = role;
             
-            // --- REPRODUCIR AUDIO SEGÚN EL ROL ---
+            // Pausar música de fondo al entrar a una sala
+            sonidoFondo.pause();
+            
+            // Efecto de sonido del rol
             if (role === 'dm') {
                 sonidoDM.play().catch(e => console.log("Audio bloqueado:", e));
             } else {
@@ -336,21 +376,15 @@
             document.getElementById('upload-panel').style.display = 'none';
             document.getElementById('select-panel').style.display = 'none';
 
-            if (panel === 'main') {
-                document.getElementById('setup-main-buttons').style.display = 'block';
-            } else if (panel === 'upload-panel') {
-                document.getElementById('upload-panel').style.display = 'block';
-            } else if (panel === 'select-panel') {
-                document.getElementById('select-panel').style.display = 'block';
-                fetchExistingMaps(); 
-            }
+            if (panel === 'main') { document.getElementById('setup-main-buttons').style.display = 'block'; } 
+            else if (panel === 'upload-panel') { document.getElementById('upload-panel').style.display = 'block'; } 
+            else if (panel === 'select-panel') { document.getElementById('select-panel').style.display = 'block'; fetchExistingMaps(); }
         }
 
         async function fetchExistingMaps() {
             try {
                 let response = await fetch('/api/mapas');
                 availableMaps = await response.json();
-                
                 let html = '<option value="">-- Seleccionar Campaña --</option>';
                 for (let camp in availableMaps) { html += `<option value="${camp}">${camp}</option>`; }
                 document.getElementById('select-campaign').innerHTML = html;
@@ -363,9 +397,7 @@
             let mapSelect = document.getElementById(mapSelectId);
             mapSelect.innerHTML = '';
             if (camp && availableMaps[camp]) {
-                availableMaps[camp].forEach(m => {
-                    mapSelect.innerHTML += `<option value="${m.nombre_mapa}" data-img="${m.ruta_relativa}">${m.nombre_mapa}</option>`;
-                });
+                availableMaps[camp].forEach(m => { mapSelect.innerHTML += `<option value="${m.nombre_mapa}" data-img="${m.ruta_relativa}">${m.nombre_mapa}</option>`; });
             }
         }
 
@@ -386,11 +418,9 @@
             try {
                 let response = await fetch('/api/upload', { method: 'POST', body: formData });
                 let result = await response.json();
-                
                 if (result.success) {
                     mapData = { campaign: camp, mapName: mapName, gridSize: gridSize, gridState: {}, pois: [], imagePath: result.ruta };
-                    saveLocalData();
-                    startMap();
+                    saveLocalData(); startMap();
                 } else { alert(result.error); }
             } catch (e) { alert("Error subiendo imagen."); }
         }
@@ -400,7 +430,6 @@
             let mapSelect = document.getElementById(mapSelectId);
             let mapName = mapSelect.value;
             if (!camp || !mapName) return;
-
             let opt = mapSelect.options[mapSelect.selectedIndex];
             let imagePath = opt.getAttribute('data-img');
             fetchMapFromServer(camp, mapName, imagePath);
@@ -411,7 +440,6 @@
             let mapSelect = document.getElementById('player-select-map');
             let mapName = mapSelect.value;
             if (!camp || !mapName) return;
-
             let opt = mapSelect.options[mapSelect.selectedIndex];
             let imagePath = opt.getAttribute('data-img');
             fetchMapFromServer(camp, mapName, imagePath);
@@ -422,13 +450,8 @@
             playerSetupScreen.classList.remove('active-screen');
             mainUiScreen.classList.add('active-screen');
 
-            if (currentRole === 'dm') {
-                document.getElementById('dm-sidebar').style.display = 'flex';
-                topUi.style.display = 'block';
-            } else {
-                document.getElementById('dm-sidebar').style.display = 'none';
-                topUi.style.display = 'none';
-            }
+            if (currentRole === 'dm') { document.getElementById('dm-sidebar').style.display = 'flex'; topUi.style.display = 'block'; } 
+            else { document.getElementById('dm-sidebar').style.display = 'none'; topUi.style.display = 'none'; }
             renderAll();
         }
 
@@ -438,18 +461,14 @@
                 let path = mapData.imagePath;
                 if (!path.startsWith('http')) path = '/' + path; 
                 bg.style.backgroundImage = `url('${path}')`; 
-            } 
-            else { bg.style.backgroundImage = `none`; }
+            } else { bg.style.backgroundImage = `none`; }
         }
 
         function renderAll() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            updateMapBackground();
-            updateRulers();
-            
+            updateMapBackground(); updateRulers();
             if (currentRole === 'player') drawFog();
-            drawGrid(); 
-            drawPOIs();
+            drawGrid(); drawPOIs();
 
             if (currentRole === 'dm') {
                 document.getElementById('campaign-input').value = mapData.campaign || '';
